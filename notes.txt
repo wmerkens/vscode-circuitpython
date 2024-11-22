@@ -1,0 +1,20 @@
+"@types/glob": "^8.1.0",
+
+
+
+glob needs to be glob@@7
+trash needs to be trash@6
+globby needs to be globby@11
+
+src/test/suite index.ts fix imports and function
+
+to get a vsix package
+move yarn.lock to yarn.lock.1 
+move .yarn to .yarn.1
+
+npm install
+npx @vscode/vsce package
+
+make quick works not make all, rebuild-electron not working
+
+

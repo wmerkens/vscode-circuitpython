@@ -1,0 +1,22 @@
+out
+node_modules
+.vscode-test/
+*.vsix
+vsc-extension-quickstart.md
+circuitpython
+# mypy
+.mypy_cache/
+circup*
+.env/
+/bindings*
+/stubs
+/boards
+new.diff
+.DS_Store
+/tmp
+.history
+build
+*.tar.gz
+.yarn
+yarn-error.log
+package
