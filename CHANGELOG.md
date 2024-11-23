@@ -3,6 +3,9 @@
 All notable changes to the "vscode-circuitpython" extension will be documented
 in this file. Please still refer to Joe Devivo version for possible changes.
 
+## [0.2.3]
+- Synced up to the Git version
+
 ## [0.2.1]
 - Forked version 0.2.0 to apply some fixes
 - Updated node to v20

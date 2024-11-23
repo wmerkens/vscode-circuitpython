@@ -17,4 +17,8 @@ npx @vscode/vsce package
 
 make quick works not make all, rebuild-electron not working
 
+To sync to Marketplace and GIT
+
+modify CHANGELOG.md, package.json, package-lock.json, README.md
+
 
