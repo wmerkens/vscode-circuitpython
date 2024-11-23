@@ -1,17 +1,17 @@
 {
-  "name": "vscode-circuitpython",
-  "displayName": "CircuitPython",
+  "name": "vscode-circuitpython-v2",
+  "displayName": "CircuitPython v2",
   "description": "CircuitPython for Visual Studio Code",
   "version": "0.2.1",
-  "publisher": "joedevivo",
+  "publisher": "wmerkens",
   "license": "MIT",
-  "qna": "https://github.com/joedevivo/vscode-circuitpython/discussions",
+  "qna": "https://github.com/wmerkens/vscode-circuitpython/discussions",
   "repository": {
     "type": "git",
-    "url": "https://github.com/joedevivo/vscode-circuitpython.git"
+    "url": "https://github.com/wmerkens/vscode-circuitpython.git"
   },
   "bugs": {
-    "url": "https://github.com/joedevivo/vscode-circuitpython/issues"
+    "url": "https://github.com/merkens/vscode-circuitpython/issues"
   },
   "engines": {
     "vscode": "^1.95.3"
