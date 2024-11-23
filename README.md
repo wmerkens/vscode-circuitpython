@@ -1,4 +1,4 @@
-# vscode-circuitpython README
+# vscode-circuitpython V2 README
 
 This extension aspires to bring your entire CircuitPython workflow into a single
 place in VSCode.
@@ -6,6 +6,8 @@ place in VSCode.
 Inspired by [Scott Hanselman's blog
 post](https://www.hanselman.com/blog/UsingVisualStudioCodeToProgramCircuitPythonWithAnAdaFruitNeoTrellisM4.aspx)
 and the [VSCode Arduino extension](https://github.com/Microsoft/vscode-arduino).
+
+I have forked the original Extention in order to apply some fixes
 
 ## Getting Started
 

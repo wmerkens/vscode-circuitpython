@@ -1,7 +1,15 @@
 # Change Log
 
 All notable changes to the "vscode-circuitpython" extension will be documented
-in this file.
+in this file. Please still refer to Joe Devivo version for possible changes.
+
+## [0.2.1]
+- Forked version 0.2.0 to apply some fixes
+- Updated node to v20
+- Updated most npm packages to be more current 
+- Fixed some areas where code needed to be ES6 compliant
+- Updated script build-stubs.sh to work with circuitpython build system changes.
+- Generated new stubs and boards.
 
 ## [0.2.0]
 - Merged [#123](https://github.com/joedevivo/vscode-circuitpython/pull/123)
