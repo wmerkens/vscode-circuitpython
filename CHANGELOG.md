@@ -3,6 +3,9 @@
 All notable changes to the "vscode-circuitpython" extension will be documented
 in this file. Please still refer to Joe Devivo version for possible changes.
 
+## [0.2.4]
+- Update boards and stubs for CP 9.2.1
+
 ## [0.2.3]
 - Synced up to the Git version
 

@@ -7,7 +7,7 @@
     git clone https://github.com/adafruit/circuitpython.git
 	
     cd circuitpython
-    git checkout 9.2.0
+    git checkout 9.2.1
 	
 	# use the make commands instead of the git commands
 	make fetch-all-submodules
