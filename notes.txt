@@ -1,5 +1,6 @@
 "@types/glob": "^8.1.0",
 
+Note npm will complain on inital install that deprecated modules are being used but they are still valid.
 
 
 glob needs to be glob@@7
@@ -8,17 +9,17 @@ globby needs to be globby@11
 
 src/test/suite index.ts fix imports and function
 
-to get a vsix package
-move yarn.lock to yarn.lock.1 
-move .yarn to .yarn.1
+Makefile steps for all
 
 npm install
+npm run electron-rebuild
+@./scripts/build-stubs.sh (need to rework script to handle a previous build, aka cleanup before build stubs)
 npx @vscode/vsce package
-
-make quick works not make all, rebuild-electron not working
 
 To sync to Marketplace and GIT
 
 modify CHANGELOG.md, package.json, package-lock.json, README.md
 
+Remove yarn since it interfers with the npm build process
 
+fixed the electron build, it needed a version bump.

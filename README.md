@@ -7,7 +7,7 @@ Inspired by [Scott Hanselman's blog
 post](https://www.hanselman.com/blog/UsingVisualStudioCodeToProgramCircuitPythonWithAnAdaFruitNeoTrellisM4.aspx)
 and the [VSCode Arduino extension](https://github.com/Microsoft/vscode-arduino).
 
-I have forked the original extension in order to apply some fixes
+I have forked the original extension in order to apply fixes
 
 ## Getting Started
 
