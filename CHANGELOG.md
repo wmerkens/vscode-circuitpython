@@ -3,6 +3,10 @@
 All notable changes to the "vscode-circuitpython" extension will be documented
 in this file. Please still refer to Joe Devivo version for possible changes.
 
+## [0.2.5]
+- remove yarn, interferes with build
+- fixed electron build, electron now at 33.2.0
+
 ## [0.2.4]
 - Update boards and stubs for CP 9.2.1
 
