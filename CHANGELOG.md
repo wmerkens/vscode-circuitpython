@@ -3,6 +3,10 @@
 All notable changes to the "vscode-circuitpython" extension will be documented
 in this file. Please still refer to Joe Devivo version for possible changes.
 
+## [0.2.6]
+- first pass at fixing the board selection list
+- change node to 20.18.0 same as VSC
+
 ## [0.2.5]
 - remove yarn, interferes with build
 - fixed electron build, electron now at 33.2.0

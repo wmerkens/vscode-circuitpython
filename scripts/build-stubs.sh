@@ -22,6 +22,7 @@
 
     # `make stubs` in circuitpython
     pip3 install wheel  # required on debian buster for some reason
+	pip3 install bs4
     pip3 install -r requirements-doc.txt
     make stubs
     if [ -d ../stubs ]; then
