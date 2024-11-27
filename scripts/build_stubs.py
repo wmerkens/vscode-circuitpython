@@ -1,274 +1,200 @@
 #!/usr/bin/env python3
-# This is a script for using circuitpython's repo to make pyi files for each board type.
-# These need to be bundled with the extension, which means that adding new boards is still
-# a new release of the extension.
+"""
+Script for generating .pyi files for each CircuitPython board type.
+These files need to be bundled with the extension, meaning new boards require a new extension release.
+"""
 
 import json
 import pathlib
 import re
-import requests
+from functools import lru_cache
+from typing import Dict, List, Tuple
+from concurrent.futures import ThreadPoolExecutor
 
+import requests
 from bs4 import BeautifulSoup
 
+# Constants
+URL = "https://circuitpython.org/downloads?sort-by=alpha-asc"
+VID_PID_PATTERN = re.compile(r"0x[0-9A-Fa-f]{4}")
 
-
-def main():
-    # URL to fetch data
-    url = "https://circuitpython.org/downloads?sort-by=alpha-asc"
-
-    
-    
-    repo_root = pathlib.Path(__file__).resolve().parent.parent
-    # First thing we want to do is store in memory, the contents of
-    # ./stubs/board/__init__.py so we can append it (partially) to
-    # every other board.
-    # See [Issue #26](https://github.com/joedevivo/vscode-circuitpython/issues/26)
-    # for more on this.
-    board_stub = repo_root / "stubs" / "board" / "__init__.pyi"
-    generic_stubs = parse_generic_stub(board_stub)
-
-    circuitpy_repo_root = repo_root / "circuitpython"
-    boards = process_boards(repo_root, circuitpy_repo_root, generic_stubs)
-
-    json_file = repo_root / "boards" / "metadata.json"
-    with open(json_file, "w") as metadata:
-        json.dump(boards, metadata)
-
-def fetch_sorted_manufacturers(url):
-    """
-    Fetches and returns a sorted list of manufacturers and names from a webpage.
-
-    Args:
-        url (str): The URL to fetch data from.
-
-    Returns:
-        list[dict]: A list of dictionaries with 'name' and 'manufacturer', sorted by 'name'.
-    """
+@lru_cache(maxsize=1)
+def fetch_sorted_manufacturers(url: str) -> List[Dict[str, str]]:
+    """Fetch and return a sorted list of manufacturers and names from the webpage."""
     try:
-        # Fetch the webpage
-        response = requests.get(url)
-        response.raise_for_status()  # Raise HTTPError for bad responses (4xx and 5xx)
-        
-        # Parse the HTML content
-        soup = BeautifulSoup(response.text, "html.parser")
-        
-        # Find all download elements
-        elements = soup.find_all("div", class_="download")
-        
-        # Extract relevant data into a list of dictionaries
-        data_list = []
-        for element in elements:
-            data_name = element.get("data-name")
-            data_manufacturer = element.get("data-manufacturer")
-            if data_name and data_manufacturer:
-                data_list.append({
-                    "name": data_name,
-                    "manufacturer": data_manufacturer
-                })
-        
-        # Sort the data list by the 'name' field
-        sorted_data = sorted(data_list, key=lambda x: x["name"].lower())
-        return sorted_data
-
+        with requests.Session() as session:
+            response = session.get(url)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+            elements = soup.find_all("div", class_="download")
+            
+            data_list = [
+                {
+                    "name": element.get("data-name"),
+                    "manufacturer": element.get("data-manufacturer")
+                }
+                for element in elements
+                if element.get("data-name") and element.get("data-manufacturer")
+            ]
+            
+            return sorted(data_list, key=lambda x: x["name"].lower())
     except requests.RequestException as e:
         print(f"Error fetching data: {e}")
         return []
 
-def parse_generic_stub(board_stub):
+def parse_generic_stub(board_stub: pathlib.Path) -> Dict[str, str]:
+    """Parse the generic board stub file."""
     generic_stubs = {}
     def_re = re.compile(r"def ([^\(]*)\(.*")
-    with open(board_stub) as stub:
+    
+    with board_stub.open('r') as stub:
         stubs = stub.readlines()
-
-        # Find the first line number and name of each definition
-        f = []
-        names = []
-        for i, s in enumerate(stubs):
-            match = def_re.match(s)
-            if match is not None:
-                f.append(i)
-                names.append(match[1])
-        f.append(len(stubs))
-
-        # Iterate the line ranges
-        for name, start, end in zip(names, f, f[1:]):
-            generic_stubs[name] = "".join(stubs[start:end])
+        
+    definitions = [(i, def_re.match(s)) for i, s in enumerate(stubs)]
+    valid_defs = [(i, match.group(1)) for i, match in definitions if match]
+    
+    for i, (start_idx, name) in enumerate(valid_defs):
+        end_idx = valid_defs[i + 1][0] if i + 1 < len(valid_defs) else len(stubs)
+        generic_stubs[name] = ''.join(stubs[start_idx:end_idx])
+    
     return generic_stubs
 
+def normalize_vid_pid(vid_or_pid: str) -> str:
+    """Normalize VID/PID to uppercase hex string."""
+    if VID_PID_PATTERN.match(vid_or_pid):
+        return vid_or_pid.upper()
+    return vid_or_pid
 
-def normalize_vid_pid(vid_or_pid: str):
-    """Make a hex string all uppercase except for the 0x."""
-    return vid_or_pid.upper().replace("0X", "0x")
-
-
-_PIN_DEF_RE = re.compile(
-    r"\s*{\s*MP_ROM_QSTR\(MP_QSTR_(?P<name>[^\)]*)\)\s*,\s*MP_ROM_PTR\((?P<value>[^\)]*)\).*"
-)
-
-
-def parse_pins(generic_stubs, pins: pathlib.Path, board_stubs):
+def parse_pins(generic_stubs: Dict[str, str], pins: pathlib.Path, board_stubs: Dict[str, str]) -> Tuple[str, str]:
+    """Parse the pins file and generate imports and stub lines."""
     imports = set()
     stub_lines = []
-    with open(pins) as p:
+    pin_re = re.compile(r"\s*{\s*MP_ROM_QSTR\(MP_QSTR_(?P<name>[^\)]*)\)\s*,\s*MP_ROM_PTR\((?P<value>[^\)]*)\).*")
+    
+    type_mapping = {
+        "&displays[0].epaper_display": ("displayio", "displayio.EPaperDisplay"),
+        "&displays[0].display": ("displayio", "displayio.Display"),
+    }
+    
+    with pins.open('r') as p:
         for line in p:
-            pin = _PIN_DEF_RE.match(line)
-            if pin is None:
+            pin = pin_re.match(line)
+            if not pin:
                 continue
+                
             pin_name = pin.group("name")
             if pin_name in generic_stubs:
                 board_stubs[pin_name] = generic_stubs[pin_name]
                 if "busio" in generic_stubs[pin_name]:
                     imports.add("busio")
                 continue
-
-            pin_type = None
-
-            # sometimes we can guess better based on the value
+                
             pin_value = pin.group("value")
-            if pin_value == "&displays[0].epaper_display":
-                imports.add("displayio")
-                pin_type = "displayio.EPaperDisplay"
-            elif pin_value == "&displays[0].display":
-                imports.add("displayio")
-                pin_type = "displayio.Display"
+            
+            if pin_value in type_mapping:
+                imports.add(type_mapping[pin_value][0])
+                pin_type = type_mapping[pin_value][1]
             elif pin_value.startswith("&pin_"):
                 imports.add("microcontroller")
                 pin_type = "microcontroller.Pin"
-
-            if pin_type is None:
+            else:
                 imports.add("typing")
                 pin_type = "typing.Any"
+                
+            stub_lines.append(f"{pin_name}: {pin_type} = ...\n")
+    
+    return '\n'.join(f"import {x}" for x in sorted(imports)) + '\n', ''.join(stub_lines)
 
-            stub_lines.append("{0}: {1} = ...\n".format(pin_name, pin_type))
+def process_board(config: pathlib.Path, repo_root: pathlib.Path, circuitpy_repo_root: pathlib.Path, generic_stubs: Dict[str, str], sorted_manufacturers: List[Dict[str, str]]) -> Dict[str, str]:
+    """Process a single board configuration."""
+    b = config.parent
+    site_path = b.stem
+    pins = b / "pins.c"
+    
+    if not config.is_file() or not pins.is_file():
+        return None
 
-    imports_string = "".join("import %s\n" % x for x in sorted(imports))
+    board_info = {
+        "usb_vid": "",
+        "usb_pid": "",
+        "usb_product": "",
+        "usb_manufacturer": "",
+        "circuitpy_creator_id": "",
+        "circuitpy_creation_id": "",
+    }
 
-    stubs_string = "".join(stub_lines)
-    return imports_string, stubs_string
+    with config.open() as conf:
+        for line in conf:
+            for key in board_info:
+                if line.startswith(key.upper()):
+                    board_info[key] = line.split("=")[1].split("#")[0].strip('" \n')
 
+    # Fallback logic
+    if not board_info["usb_vid"] and board_info["circuitpy_creator_id"]:
+        board_info["usb_vid"] = board_info["circuitpy_creator_id"]
+    if not board_info["usb_pid"] and board_info["circuitpy_creation_id"]:
+        board_info["usb_pid"] = board_info["circuitpy_creation_id"]
 
-# now, while we build the actual board stubs, replace any line that starts with `  $name:` with value
+    prefix = site_path.split("_", 1)[0]
+    matched_manufacturer = next((data["manufacturer"] for data in sorted_manufacturers if prefix.lower() in data["manufacturer"].lower()), None)
 
-# Function to extract the part before the first underscore
-def extract_manufacturer_prefix(site_path):
-    return site_path.split("_", 1)[0]
+    if matched_manufacturer == "Unknown" or (matched_manufacturer and prefix.lower() not in board_info["usb_manufacturer"].lower()):
+        board_info["usb_product"] = site_path
+        board_info["usb_manufacturer"] = prefix.capitalize()
 
-def process_boards(repo_root, circuitpy_repo_root, generic_stubs):
-    boards = []
+    if not board_info["usb_product"] or not board_info["usb_manufacturer"]:
+        board_info["usb_product"] = site_path
+        board_info["usb_manufacturer"] = prefix.capitalize()
 
-    # Fetch the sorted manufacturers from the web
-    url = "https://circuitpython.org/downloads?sort-by=alpha-asc"
-    sorted_manufacturers = fetch_sorted_manufacturers(url)
+    board_info["usb_vid"] = normalize_vid_pid(board_info["usb_vid"])
+    board_info["usb_pid"] = normalize_vid_pid(board_info["usb_pid"])
 
-    # Process each board configuration
-    board_configs = circuitpy_repo_root.glob("ports/*/boards/*/mpconfigboard.mk")
-    for config in board_configs:
-        b = config.parent
-        site_path = b.stem
+    board = {
+        "vid": board_info["usb_vid"],
+        "pid": board_info["usb_pid"],
+        "product": board_info["usb_product"],
+        "manufacturer": board_info["usb_manufacturer"],
+        "site_path": site_path,
+        "description": f"{board_info['usb_manufacturer']} {board_info['usb_product']}",
+    }
 
-        print(config)
-        pins = b / "pins.c"
-        if not config.is_file() or not pins.is_file():
-            continue
+    board_pyi_path = repo_root / "boards" / board_info["usb_vid"] / board_info["usb_pid"]
+    board_pyi_path.mkdir(parents=True, exist_ok=True)
+    board_pyi_file = board_pyi_path / "board.pyi"
 
-        usb_vid = ""
-        usb_pid = ""
-        usb_product = ""
-        usb_manufacturer = ""
+    board_stubs = {}
+    imports_string, stubs_string = parse_pins(generic_stubs, pins, board_stubs)
 
-        # Extract USB fields from the mk file
-        with open(config) as conf:
-            for line in conf:
-                if line.startswith("USB_PRODUCT"):
-                    usb_product = line.split("=")[1].split("#")[0].strip('" \n')
-                elif line.startswith("USB_MANUFACTURER"):
-                    usb_manufacturer = line.split("=")[1].split("#")[0].strip('" \n')
-                elif line.startswith("USB_VID"):
-                    usb_vid = line.split("=")[1].split("#")[0].strip('" \n')
-                elif line.startswith("USB_PID"):
-                    usb_pid = line.split("=")[1].split("#")[0].strip('" \n')
+    with board_pyi_file.open("w") as outfile:
+        outfile.write("from __future__ import annotations\n")
+        outfile.write(imports_string)
+        outfile.write(f'"""\nboard {board["description"]}\n')
+        outfile.write(f'https://circuitpython.org/boards/{board["site_path"]}\n"""\n')
+        outfile.write(stubs_string)
+        for p in board_stubs:
+            outfile.write(f"{board_stubs[p]}\n")
 
-        # Extract prefix from site_path
-        prefix = site_path.split("_", 1)[0]
+    return board
 
-        # Match manufacturer from web list
-        matched_manufacturer = None
-        product_name = ""
-        product_manufacturer = ""
+def main():
+    repo_root = pathlib.Path(__file__).resolve().parent.parent
+    board_stub = repo_root / "stubs" / "board" / "__init__.pyi"
+    generic_stubs = parse_generic_stub(board_stub)
 
-        for data in sorted_manufacturers:
-            if prefix.lower() in data["manufacturer"].lower():
-                matched_manufacturer = data["manufacturer"]
-                product_name = data["name"]
-                product_manufacturer = data["manufacturer"]
-                break
+    circuitpy_repo_root = repo_root / "circuitpython"
+    sorted_manufacturers = fetch_sorted_manufacturers(URL)
 
-        # Apply fallback rules for "Unknown" or mismatched web manufacturer
-        if matched_manufacturer == "Unknown" or (matched_manufacturer and prefix.lower() not in usb_manufacturer.lower()):
-            print(f"Web list manufacturer is 'Unknown' or mismatched for {site_path}. Using site_path prefix as fallback.")
-            usb_product = site_path
-            usb_manufacturer = prefix.capitalize()
+    board_configs = list(circuitpy_repo_root.glob("ports/*/boards/*/mpconfigboard.mk"))
 
-        # Handle blank USB fields
-        if not usb_product or not usb_manufacturer:
-            print(f"USB fields are blank for {site_path}. Falling back to site_path prefix.")
-            usb_product = site_path
-            usb_manufacturer = prefix.capitalize()
+    with ThreadPoolExecutor() as executor:
+        boards = list(filter(None, executor.map(
+            lambda config: process_board(config, repo_root, circuitpy_repo_root, generic_stubs, sorted_manufacturers),
+            board_configs
+        )))
 
-        # Normalize VID and PID
-        usb_vid = normalize_vid_pid(usb_vid)
-        usb_pid = normalize_vid_pid(usb_pid)
-
-        # Create a description based on available data
-        description = f"{usb_manufacturer} {usb_product}"
-
-        # Construct the board dictionary
-        board = {
-            "vid": usb_vid,
-            "pid": usb_pid,
-            "product": usb_product,
-            "manufacturer": usb_manufacturer,
-            "site_path": site_path,
-            "description": description,
-        }
-        boards.append(board)
-        print(
-            f"{usb_vid}:{usb_pid} {usb_manufacturer}, {usb_product}"
-        )
-
-        # Create board stub file paths
-        board_pyi_path = repo_root / "boards" / usb_vid / usb_pid
-        board_pyi_path.mkdir(parents=True, exist_ok=True)
-        board_pyi_file = board_pyi_path / "board.pyi"
-
-        # We're going to put the common stuff from the generic board stub at the
-        # end of the file, so we'll collect them after the loop
-        board_stubs = {}
-
-        # Write to the stub file
-        with open(board_pyi_file, "w") as outfile:
-            imports_string, stubs_string = parse_pins(generic_stubs, pins, board_stubs)
-            outfile.write("from __future__ import annotations\n")
-            outfile.write(imports_string)
-
-            # start of module doc comment
-            outfile.write('"""\n')
-            outfile.write(f"board {board['description']}\n")
-            outfile.write(
-                f"https://circuitpython.org/boards/{board['site_path']}\n"
-            )
-            outfile.write('"""\n')
-
-            # start of actual stubs
-            outfile.write(stubs_string)
-
-            for p in board_stubs:
-                outfile.write(f"{board_stubs[p]}\n")
-
-    return boards
-
-
-
+    json_file = repo_root / "boards" / "metadata.json"
+    with json_file.open("w") as metadata:
+        json.dump(boards, metadata, indent=2)
 
 if __name__ == "__main__":
     main()
