@@ -11,9 +11,6 @@
 	
 	# use the make commands instead of the git commands
 	make fetch-all-submodules
-	
-	# git submodule init
-    # git submodule update extmod/ulab
 
     # Use a venv for these
     # Using this name so circuitpython repo already gitignores it
