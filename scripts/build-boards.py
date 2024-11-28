@@ -3,14 +3,12 @@
 Script for generating .pyi files for each CircuitPython board type.
 These files need to be bundled with the extension, meaning new boards require a new extension release.
 """
-
 import json
 import pathlib
 import re
 from functools import lru_cache
 from typing import Dict, List, Tuple
 from concurrent.futures import ThreadPoolExecutor
-
 import requests
 from bs4 import BeautifulSoup
 
@@ -27,7 +25,6 @@ def fetch_sorted_manufacturers(url: str) -> List[Dict[str, str]]:
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
             elements = soup.find_all("div", class_="download")
-            
             data_list = [
                 {
                     "name": element.get("data-name"),
@@ -36,7 +33,6 @@ def fetch_sorted_manufacturers(url: str) -> List[Dict[str, str]]:
                 for element in elements
                 if element.get("data-name") and element.get("data-manufacturer")
             ]
-            
             return sorted(data_list, key=lambda x: x["name"].lower())
     except requests.RequestException as e:
         print(f"Error fetching data: {e}")
@@ -46,51 +42,45 @@ def parse_generic_stub(board_stub: pathlib.Path) -> Dict[str, str]:
     """Parse the generic board stub file."""
     generic_stubs = {}
     def_re = re.compile(r"def ([^\(]*)\(.*")
-    
     with board_stub.open('r') as stub:
         stubs = stub.readlines()
-        
     definitions = [(i, def_re.match(s)) for i, s in enumerate(stubs)]
     valid_defs = [(i, match.group(1)) for i, match in definitions if match]
-    
     for i, (start_idx, name) in enumerate(valid_defs):
         end_idx = valid_defs[i + 1][0] if i + 1 < len(valid_defs) else len(stubs)
         generic_stubs[name] = ''.join(stubs[start_idx:end_idx])
-    
     return generic_stubs
 
-def normalize_vid_pid(vid_or_pid: str) -> str:
+def normalize_vid_pid(value: str) -> str:
     """Normalize VID/PID to uppercase hex string."""
-    if VID_PID_PATTERN.match(vid_or_pid):
-        return vid_or_pid.upper()
-    return vid_or_pid
+    if not value:
+        return value
+    if value.startswith("0x") or value.startswith("0X"):
+        return value.upper()
+    return f"0x{value.zfill(4).upper()}"
 
 def parse_pins(generic_stubs: Dict[str, str], pins: pathlib.Path, board_stubs: Dict[str, str]) -> Tuple[str, str]:
     """Parse the pins file and generate imports and stub lines."""
     imports = set()
     stub_lines = []
     pin_re = re.compile(r"\s*{\s*MP_ROM_QSTR\(MP_QSTR_(?P<name>[^\)]*)\)\s*,\s*MP_ROM_PTR\((?P<value>[^\)]*)\).*")
-    
     type_mapping = {
         "&displays[0].epaper_display": ("displayio", "displayio.EPaperDisplay"),
         "&displays[0].display": ("displayio", "displayio.Display"),
     }
-    
+
     with pins.open('r') as p:
         for line in p:
             pin = pin_re.match(line)
             if not pin:
                 continue
-                
             pin_name = pin.group("name")
             if pin_name in generic_stubs:
                 board_stubs[pin_name] = generic_stubs[pin_name]
                 if "busio" in generic_stubs[pin_name]:
                     imports.add("busio")
                 continue
-                
             pin_value = pin.group("value")
-            
             if pin_value in type_mapping:
                 imports.add(type_mapping[pin_value][0])
                 pin_type = type_mapping[pin_value][1]
@@ -100,9 +90,8 @@ def parse_pins(generic_stubs: Dict[str, str], pins: pathlib.Path, board_stubs: D
             else:
                 imports.add("typing")
                 pin_type = "typing.Any"
-                
             stub_lines.append(f"{pin_name}: {pin_type} = ...\n")
-    
+
     return '\n'.join(f"import {x}" for x in sorted(imports)) + '\n', ''.join(stub_lines)
 
 def process_board(config: pathlib.Path, repo_root: pathlib.Path, circuitpy_repo_root: pathlib.Path, generic_stubs: Dict[str, str], sorted_manufacturers: List[Dict[str, str]]) -> Dict[str, str]:
@@ -110,7 +99,6 @@ def process_board(config: pathlib.Path, repo_root: pathlib.Path, circuitpy_repo_
     b = config.parent
     site_path = b.stem
     pins = b / "pins.c"
-    
     if not config.is_file() or not pins.is_file():
         return None
 
@@ -137,7 +125,7 @@ def process_board(config: pathlib.Path, repo_root: pathlib.Path, circuitpy_repo_
 
     prefix = site_path.split("_", 1)[0]
     matched_manufacturer = next((data["manufacturer"] for data in sorted_manufacturers if prefix.lower() in data["manufacturer"].lower()), None)
-
+    
     if matched_manufacturer == "Unknown" or (matched_manufacturer and prefix.lower() not in board_info["usb_manufacturer"].lower()):
         board_info["usb_product"] = site_path
         board_info["usb_manufacturer"] = prefix.capitalize()
@@ -146,6 +134,7 @@ def process_board(config: pathlib.Path, repo_root: pathlib.Path, circuitpy_repo_
         board_info["usb_product"] = site_path
         board_info["usb_manufacturer"] = prefix.capitalize()
 
+    # Normalize VID and PID
     board_info["usb_vid"] = normalize_vid_pid(board_info["usb_vid"])
     board_info["usb_pid"] = normalize_vid_pid(board_info["usb_pid"])
 
@@ -161,6 +150,11 @@ def process_board(config: pathlib.Path, repo_root: pathlib.Path, circuitpy_repo_
     board_pyi_path = repo_root / "boards" / board_info["usb_vid"] / board_info["usb_pid"]
     board_pyi_path.mkdir(parents=True, exist_ok=True)
     board_pyi_file = board_pyi_path / "board.pyi"
+
+    # Skip if file already exists
+    if board_pyi_file.exists():
+        print(f"Skipping existing board file: {board_pyi_file}")
+        return None
 
     board_stubs = {}
     imports_string, stubs_string = parse_pins(generic_stubs, pins, board_stubs)
@@ -180,10 +174,8 @@ def main():
     repo_root = pathlib.Path(__file__).resolve().parent.parent
     board_stub = repo_root / "stubs" / "board" / "__init__.pyi"
     generic_stubs = parse_generic_stub(board_stub)
-
     circuitpy_repo_root = repo_root / "circuitpython"
     sorted_manufacturers = fetch_sorted_manufacturers(URL)
-
     board_configs = list(circuitpy_repo_root.glob("ports/*/boards/*/mpconfigboard.mk"))
 
     with ThreadPoolExecutor() as executor:
@@ -193,8 +185,9 @@ def main():
         )))
 
     json_file = repo_root / "boards" / "metadata.json"
-    with json_file.open("w") as metadata:
-        json.dump(boards, metadata, indent=2)
+    with json_file.open("w") as metadata_file:
+        json.dump(boards, metadata_file, indent=2)
 
 if __name__ == "__main__":
     main()
+    

@@ -113,7 +113,7 @@ def main(version: str) -> None:
 
     # Change back to repo root and build stubs
     os.chdir(repo_root)
-    run_command(f"{venv_python} ./scripts/build_stubs.py")
+    run_command(f"{venv_python} ./scripts/build-boards.py")
 
     # Cleanup only the virtual environment
     safe_rmtree(venv_dir)
