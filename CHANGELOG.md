@@ -3,6 +3,9 @@
 All notable changes to the "vscode-circuitpython" extension will be documented
 in this file. Please still refer to Joe Devivo version for possible changes.
 
+## [0.2.8]
+- rebuild missing stuff
+
 ## [0.2.7]
 - updated the stubs and board scripts, they are now both python and overall   improved for speed and reliability
 - final fixes for generating the metadata.json file in boards directory
