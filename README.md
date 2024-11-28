@@ -9,6 +9,10 @@ and the [VSCode Arduino extension](https://github.com/Microsoft/vscode-arduino).
 
 I have forked the original extension in order to apply fixes
 
+Note: if updating and opening a existing CIRCUITPY folder please re select the board from the list. Please let me know if a board is missing, The metadata.json file contains 550 boards, 8 boards are not released or boards that have Unknown Manufacture.
+
+
+
 ## Getting Started
 
 The extension will currently activate when any of the following occurs:

@@ -6,7 +6,7 @@ find-native:
 all:
 	@npm install
 	@npm run electron-rebuild
-	@./scripts/build-stubs.sh
+	@./scripts/build-stubs.py
 	@npx @vscode/vsce package
 
 .PHONY: quick
