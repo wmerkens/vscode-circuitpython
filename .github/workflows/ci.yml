@@ -50,7 +50,7 @@ jobs:
       - name: Electron Rebuild
         run: npm run electron-rebuild
       - name: Build stubs and board metadata
-        run: ./scripts/build-stubs.py
+        run: ./scripts/build-stubs.sh
         shell: bash
       - name: Stay on target
         shell: pwsh
