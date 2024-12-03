@@ -69,7 +69,7 @@ if [ -d "$REPO_ROOT/stubs" ]; then
     fi
 
 cd "$REPO_ROOT"
-    python3 ./scripts/build_stubs.py
+    python3 ./scripts/build-boards.py
 
 # Cleanup
 deactivate
