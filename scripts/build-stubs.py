@@ -88,7 +88,6 @@ def main(version: str) -> None:
     # Install dependencies
     run_command(f"{venv_pip} install --upgrade pip wheel")
     run_command(f"{venv_pip} install bs4")
-    run_command(f"{venv_pip} install isort")
     run_command(f"{venv_pip} install -r requirements-doc.txt")
 
     # Generate stubs
