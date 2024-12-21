@@ -2,7 +2,7 @@
   "name": "vscode-circuitpython-v2",
   "displayName": "CircuitPython v2",
   "description": "CircuitPython for Visual Studio Code",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "publisher": "wmerkens",
   "license": "MIT",
   "qna": "https://github.com/wmerkens/vscode-circuitpython/discussions",
@@ -11,10 +11,10 @@
     "url": "https://github.com/wmerkens/vscode-circuitpython.git"
   },
   "bugs": {
-    "url": "https://github.com/merkens/vscode-circuitpython/issues"
+    "url": "https://github.com/wmerkens/vscode-circuitpython/issues"
   },
   "engines": {
-    "vscode": "^1.95.3"
+    "vscode": "^1.96.0"
   },
   "icon": "images/BlinkaOnDark.png",
   "categories": [
@@ -134,7 +134,7 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && yarn npm lint",
     "test": "node ./out/test/runTest.js",
-    "electron-rebuild": "electron-rebuild -v 33.2.0",
+    "electron-rebuild": "electron-rebuild -v 33.2.6",
     "build-bindings": "node ./scripts/build-bindings.js",
     "install-bindings": "node ./scripts/install-bindings.js"
   },
@@ -150,13 +150,13 @@
     "@types/node": "^22.9.1",
     "@types/serialport": "^8.0.5",
     "@types/unzipper": "^0.10.10",
-    "@types/vscode": "^1.95.0",
+    "@types/vscode": "^1.96.0",
     "@typescript-eslint/eslint-plugin": "^8.15.0",
     "@typescript-eslint/parser": "^8.15.0S",
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^3.2.1",
     "ansi-regex": "^6.1.0",
-    "electron": "^33.2.0",
+    "electron": "^33.2.6",
     "electron-builder": "^25.1.8",
     "eslint": "^9.15.0",
     "glob": "^7.2.3",

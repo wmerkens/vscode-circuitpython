@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { Board } from './boards/board';
 import * as path from 'path';
+import * as fs from 'fs';
 import { Container } from './container';
 
 export class Project implements vscode.Disposable {
@@ -51,17 +52,12 @@ export class Project implements vscode.Disposable {
       let b: Board = Board.lookup(vid, pid);
       this.setBoard(b);
     }
-
-    // At the end of init, the existing Bundle Dir is unchanged, but it'll
-    // probably change after library manager fetches a new update. Even if it's
-    // not a newer bundle, you may be on a different computer, and that library
-    // manager update will fix the absolute path.
   }
 
   public dispose() {}
 
   public setBoard(board: Board) {
-    if(!(this._board &&
+    if (!(this._board &&
       this._board.vid === board.vid &&
       this._board.pid === board.pid
       )) {
@@ -90,9 +86,29 @@ export class Project implements vscode.Disposable {
       this._autoCompleteStdLib,
       this._autoCompleteBundle
     ].concat(this._autoCompleteExtra);
+
+    console.log("Updating python.analysis.extraPaths with:", paths);
+
+    // Update user settings (global)
     vscode.workspace.getConfiguration().update(
-      "python.analysis.extraPaths", 
-       paths
+      "python.analysis.extraPaths",
+      paths,
+      vscode.ConfigurationTarget.Global
     );
+
+    // Check if a workspace settings file exists and update it
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (workspaceFolders && workspaceFolders.length > 0) {
+      const workspaceSettingsPath = path.join(workspaceFolders[0].uri.fsPath, '.vscode', 'settings.json');
+
+      // Check if the workspace settings file exists
+      if (fs.existsSync(workspaceSettingsPath)) {
+        vscode.workspace.getConfiguration().update(
+          "python.analysis.extraPaths",
+          paths,
+          vscode.ConfigurationTarget.Workspace
+        );
+      }
+    }
   }
 }
