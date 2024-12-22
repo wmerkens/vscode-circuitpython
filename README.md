@@ -122,6 +122,12 @@ I would have restricted the scope to workspace if that was an option.
 
 ## Known Issues
 
+Library Manager has a issue with unpacking the bundle, this affects the two commands
+
+Update All Librearies and Show Available Libraries
+
+Use circup at the CLI to do library updates.
+
 ## Release Notes
 
 See the [Changelog](CHANGELOG.md)

@@ -3,6 +3,10 @@
 All notable changes to the "vscode-circuitpython" extension will be documented
 in this file. Please still refer to Joe Devivo version for possible changes.
 
+## [0.2.9]
+- Fix Issue #14 Incorrect link for Issues on Extention page.
+- Rebuild for updated VSC and NPM
+
 ## [0.2.8]
 - rebuild missing stuff
 
