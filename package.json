@@ -2,7 +2,7 @@
   "name": "vscode-circuitpython-v2",
   "displayName": "CircuitPython v2",
   "description": "CircuitPython for Visual Studio Code",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "publisher": "wmerkens",
   "license": "MIT",
   "qna": "https://github.com/wmerkens/vscode-circuitpython/discussions",
@@ -149,7 +149,6 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.9.1",
     "@types/serialport": "^8.0.5",
-    "@types/unzipper": "^0.10.10",
     "@types/vscode": "^1.96.0",
     "@typescript-eslint/eslint-plugin": "^8.15.0",
     "@typescript-eslint/parser": "^8.15.0S",
@@ -174,6 +173,7 @@
     "@electron/node-gyp": "^10.2.0-electron.2",
     "@serialport/bindings-cpp": "^12.0.1",
     "@serialport/bindings-interface": "^1.2.2",
+    "adm-zip": "^0.5.16",
     "axios": "^1.7.7",
     "drivelist": "^12.0.2",
     "fs-extra": "^11.2.0",
@@ -184,7 +184,6 @@
     "shelljs": "^0.8.5",
     "trash": "^6.1.1",
     "typescript-string-operations": "^1.5.1",
-    "unzipper": "^0.12.3",
     "webpack": "^5.96.1"
   },
   "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"

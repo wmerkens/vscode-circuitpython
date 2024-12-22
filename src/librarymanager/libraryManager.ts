@@ -2,10 +2,9 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as axios from "axios";
-import * as unzip from "unzipper";
+import AdmZip from "adm-zip";
 import { String } from "typescript-string-operations";
 import * as _ from "lodash";
-import { Library } from "./library";
 import globby from 'globby';
 import * as fs_extra from "fs-extra";
 import trash from "trash";
@@ -13,13 +12,13 @@ import { Container } from "../container";
 
 // Master debug switch
 const DEBUG_MODE = true;
-
 function debugLog(message: string) {
   if (DEBUG_MODE) {
     console.log(message);
   }
 }
 
+// LibraryQP class
 class LibraryQP implements vscode.QuickPickItem {
   public label: string = null;
   public description: string = null;
@@ -97,6 +96,43 @@ class LibraryQP implements vscode.QuickPickItem {
   }
 }
 
+// Library class
+export class Library {
+  public name: string;
+  public version: string;
+  public location: string;
+  public isDirectory: boolean;
+
+  constructor(name: string, version: string, location: string, isDirectory: boolean) {
+    this.name = name;
+    this.version = version;
+    this.location = location;
+    this.isDirectory = isDirectory;
+  }
+
+  public static async from(filePath: string, metadata: any): Promise<Library> {
+    const name = Library.extractName(filePath);
+    const isDirectory = fs.statSync(filePath).isDirectory();
+    const version = metadata[name]?.version || "unknown";
+    return new Library(name, version, filePath, isDirectory);
+  }
+
+  private static extractName(filePath: string): string {
+    return path.basename(filePath, path.extname(filePath));
+  }
+
+  public static loadMetadata(jsonFilePath: string): any {
+    try {
+      const rawData = fs.readFileSync(jsonFilePath, "utf8");
+      return JSON.parse(rawData);
+    } catch (error) {
+      console.error(`Error loading metadata from ${jsonFilePath}:`, error);
+      return {};
+    }
+  }
+}
+
+// LibraryManager class
 export class LibraryManager implements vscode.Disposable {
   public static BUNDLE_URL: string =
     "https://github.com/adafruit/Adafruit_CircuitPython_Bundle";
@@ -122,28 +158,32 @@ export class LibraryManager implements vscode.Disposable {
     this.storageRootDir = root;
     this.bundleDir = path.join(this.storageRootDir, "bundle");
     fs.mkdirSync(this.bundleDir, { recursive: true });
-    let tag: string = this.getMostRecentBundleOnDisk();
-    if (tag !== undefined && this.verifyBundle(tag)) {
-      this.tag = tag;
-      this.localBundleDir = path.join(this.bundleDir, tag);
-    }
   }
 
   public async initialize() {
     debugLog("Initializing LibraryManager.");
-    await this.updateBundle();
-    await this.loadBundleMetadata();
-    this.projectLibDir = this.getOrCreateProjectLibDir();
-    debugLog("Project library directory: " + this.projectLibDir);
-    this.workspaceLibraries = await this.loadLibraryMetadata(
-      this.projectLibDir
-    );
-    this.cpVersion = this.getProjectCPVersion();
-    if (this.cpVersion) {
-      let v: string[] = this.cpVersion.split(".");
-      if (LibraryManager.BUNDLE_SUFFIXES.includes(`${v[0]}.x-mpy`)) {
-        this.mpySuffix = `${v[0]}.x-mpy`;
+    try {
+      let tag = this.getMostRecentBundleOnDisk();
+      if (!tag || !this.verifyBundle(tag)) {
+        debugLog("No valid bundle found on disk, attempting to update.");
+        await this.updateBundle();
+      } else {
+        this.tag = tag;
+        this.localBundleDir = path.join(this.bundleDir, tag);
       }
+      await this.loadBundleMetadata();
+      this.projectLibDir = this.getOrCreateProjectLibDir();
+      debugLog("Project library directory: " + this.projectLibDir);
+      this.workspaceLibraries = await this.loadLibraryMetadata(this.projectLibDir);
+      this.cpVersion = this.getProjectCPVersion();
+      if (this.cpVersion) {
+        let v: string[] = this.cpVersion.split(".");
+        if (LibraryManager.BUNDLE_SUFFIXES.includes(`${v[0]}.x-mpy`)) {
+          this.mpySuffix = `${v[0]}.x-mpy`;
+        }
+      }
+    } catch (error) {
+      console.error("Error during initialization:", error);
     }
   }
 
@@ -170,7 +210,7 @@ export class LibraryManager implements vscode.Disposable {
     } else if (exists) {
       bootOut = b;
       try {
-        let _a: string = fs.readFileSync(b).toString();
+        let _a: string = fs.readFileSync(b, "utf8").toString();
         let _b: string[] = _a.split(";");
         let _c: string = _b[0];
         let _d: string[] = _c.split(" ");
@@ -205,18 +245,24 @@ export class LibraryManager implements vscode.Disposable {
 
   public async updateBundle() {
     debugLog("Updating bundle.");
-    let tag: string = await this.getLatestBundleTag();
-    let localBundleDir: string = path.join(this.bundleDir, tag);
-
-    // Always replace the bundle
-    debugLog(`Downloading new bundle: ${tag}`);
-    await this.getBundle(tag);
-    this.tag = tag;
-    this.localBundleDir = localBundleDir;
-    vscode.window.showInformationMessage(`Bundle updated to ${tag}`);
-
-    this.verifyBundle(tag);
-    Container.updateBundlePath();
+    try {
+      let tag: string = await this.getLatestBundleTag();
+      if (!tag) {
+        throw new Error("Failed to fetch the latest bundle tag.");
+      }
+      let localBundleDir: string = path.join(this.bundleDir, tag);
+      debugLog(`Downloading new bundle: ${tag}`);
+      await this.getBundle(tag);
+      this.tag = tag;
+      this.localBundleDir = localBundleDir;
+      vscode.window.showInformationMessage(`Bundle updated to ${tag}`);
+      if (!this.verifyBundle(tag)) {
+        throw new Error("Failed to verify the downloaded bundle.");
+      }
+      Container.updateBundlePath();
+    } catch (error) {
+      console.error("Error during bundle update:", error);
+    }
   }
 
   private async getBundle(tag: string) {
@@ -228,18 +274,15 @@ export class LibraryManager implements vscode.Disposable {
       LibraryManager.BUNDLE_URL +
       "/releases/download/{0}/adafruit-circuitpython-bundle-{1}-{0}.zip";
     this.tag = tag;
-
     let metadataUrl: string = String.Format(metdataUrl, tag);
     fs.mkdirSync(path.join(this.storageRootDir, "bundle", tag), {
       recursive: true,
     });
-
     try {
       for await (const suffix of LibraryManager.BUNDLE_SUFFIXES) {
         debugLog(`Processing bundle with suffix: ${suffix}`);
         let url: string = String.Format(urlRoot, tag, suffix);
         let p: string = path.join(this.storageRootDir, "bundle", tag);
-
         await axios.default
           .get(url, { responseType: "stream" })
           .then((response) => {
@@ -258,7 +301,6 @@ export class LibraryManager implements vscode.Disposable {
     } catch (error) {
       console.error(`Error processing bundle for tag ${tag}:`, error);
     }
-
     let dest: string = path.join(
       this.storageRootDir,
       "bundle",
@@ -275,25 +317,14 @@ export class LibraryManager implements vscode.Disposable {
       .catch((error) => {
         console.log(`Error downloading bundle metadata: ${metadataUrl}`, error);
       });
-
     Container.loadBundleMetadata();
   }
 
   private async extractBundle(zipPath: string, extractPath: string) {
     debugLog(`Starting to extract bundle: ${zipPath}`);
     try {
-      const directory = await unzip.Open.file(zipPath);
-      for (const file of directory.files) {
-        const filePath = path.join(extractPath, file.path);
-        if (file.type === "Directory") {
-          debugLog(`Creating directory: ${filePath}`);
-          fs.mkdirSync(filePath, { recursive: true });
-        } else {
-          debugLog(`Extracting file: ${filePath}`);
-          const writeStream = fs.createWriteStream(filePath);
-          file.stream().pipe(writeStream);
-        }
-      }
+      const zip = new AdmZip(zipPath);
+      zip.extractAllTo(extractPath, true);
       debugLog(`Successfully extracted bundle: ${zipPath}`);
     } catch (error) {
       console.error(`Error during extraction of ${zipPath}:`, error);
@@ -309,13 +340,10 @@ export class LibraryManager implements vscode.Disposable {
     let bundles: fs.Dirent[] = fs
       .readdirSync(localBundleDir, { withFileTypes: true })
       .sort();
-
     let suffixRegExp: RegExp = new RegExp(
       `adafruit-circuitpython-bundle-(.*)-${tag}`
     );
-
     let suffixes: string[] = [];
-
     bundles.forEach((b) => {
       if (b.isDirectory()) {
         let p: string = path.join(localBundleDir, b.name);
@@ -326,9 +354,7 @@ export class LibraryManager implements vscode.Disposable {
         suffixes.push(b.name.match(suffixRegExp)[1]);
       }
     });
-
     this.localBundleDir = localBundleDir;
-
     fs.readdir(this.bundleDir, { withFileTypes: true }, (err, bundles) => {
       bundles.forEach((b) => {
         if (b.isDirectory() && b.name !== this.tag) {
@@ -337,7 +363,6 @@ export class LibraryManager implements vscode.Disposable {
         }
       });
     });
-
     return true;
   }
 
@@ -356,9 +381,7 @@ export class LibraryManager implements vscode.Disposable {
     }
     let tag: string = fs
       .readdirSync(this.bundleDir)
-      .filter((dir: string, i: number, a: string[]) =>
-        LibraryManager.BUNDLE_VERSION_REGEX.test(dir)
-      )
+      .filter((dir: string) => LibraryManager.BUNDLE_VERSION_REGEX.test(dir))
       .sort()
       .reverse()
       .shift();
@@ -373,6 +396,10 @@ export class LibraryManager implements vscode.Disposable {
   }
 
   public bundlePath(suffix: string): string {
+    debugLog(`bundlePath called with suffix: ${suffix}`);
+    if (!this.localBundleDir || !this.tag) {
+      throw new Error("localBundleDir or tag is not set");
+    }
     return path.join(
       this.localBundleDir,
       `adafruit-circuitpython-bundle-${suffix}-${this.tag}`,
@@ -402,7 +429,7 @@ export class LibraryManager implements vscode.Disposable {
       onlyFiles: false,
     });
     let libraries: Array<Promise<Library>> = libDirs.map((p, i, a) =>
-      Library.from(p).then((l) => {
+      Library.from(p, jsonData).then((l) => {
         if (rootDir.startsWith(this.localBundleDir)) {
           l.version = jsonData[l.name].version;
         }
@@ -479,6 +506,11 @@ export class LibraryManager implements vscode.Disposable {
       .forEach((v, i, a) => {
         let b: Library = this.libraries.get(v);
         let p: Library = this.workspaceLibraries.get(v);
+        if (p) {
+          let label = p.name;
+          let description = `v${p.version}`;
+          debugLog(`Installed Library: ${label}, Description: ${description}`);
+        }
         choices.push(new LibraryQP(b, p));
       });
     return choices;
