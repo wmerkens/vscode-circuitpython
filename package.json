@@ -11,7 +11,7 @@
     "url": "https://github.com/wmerkens/vscode-circuitpython.git"
   },
   "bugs": {
-    "url": "https://github.com/merkens/vscode-circuitpython/issues"
+    "url": "https://github.com/wmerkens/vscode-circuitpython/issues"
   },
   "engines": {
     "vscode": "^1.96.2"
