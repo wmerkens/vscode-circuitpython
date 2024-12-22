@@ -3,6 +3,14 @@
 All notable changes to the "vscode-circuitpython" extension will be documented
 in this file. Please still refer to Joe Devivo version for possible changes.
 
+## [0.3.0]
+- Fix issue where downloaded bundle was not unpacked properly
+- Fix issue where choosing a library the list would show your already installed librarys with corrupt description
+- Fix issue where the .vscode/settings.json file would not be updated properly
+- Since the bundle now ships as mpy files for everything, removed the parsing of metadata from the mpy files.
+  instead we use the supplied metadata.json to derive version, name, ect for the metadate. This was causing a lot of
+  library issues.
+
 ## [0.2.9]
 - Fix Issue #14 Incorrect link for Issues on Extention page.
 - Rebuild for updated VSC and NPM
