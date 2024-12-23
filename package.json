@@ -2,7 +2,7 @@
   "name": "vscode-circuitpython-v2",
   "displayName": "CircuitPython v2",
   "description": "CircuitPython for Visual Studio Code",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "wmerkens",
   "license": "MIT",
   "qna": "https://github.com/wmerkens/vscode-circuitpython/discussions",

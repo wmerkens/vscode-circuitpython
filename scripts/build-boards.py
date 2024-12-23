@@ -106,31 +106,26 @@ def parse_pins(generic_stubs: Dict[str, str], pins: pathlib.Path, board_stubs: D
 def process_boards(repo_root: pathlib.Path, circuitpy_repo_root: pathlib.Path, generic_stubs: Dict[str, str]) -> List[Dict[str, str]]:
     """Process all board configurations."""
     boards = []
-    processed_boards = {}  # Change to dictionary to track counts
+    processed_boards = {}
     sorted_manufacturers = fetch_sorted_manufacturers(URL)
     board_configs = circuitpy_repo_root.glob("ports/*/boards/*/mpconfigboard.mk")
-
     for config in board_configs:
         b = config.parent
         site_path = b.stem
         pins = b / "pins.c"
         pins_csv = b / "pins.csv"
-        
         # Skip if config file is missing
         if not config.is_file():
             print(f"Skipping {site_path}: mpconfigboard.mk not found")
             continue
-
         # Skip if using pins.csv instead of pins.c
         if pins_csv.exists() and not pins.exists():
             print(f"Skipping {site_path}: using pins.csv instead of pins.c")
             continue
-
         # Skip if neither pins.c nor pins.csv exists
         if not pins.exists() and not pins_csv.exists():
             print(f"Skipping {site_path}: no pins file found")
             continue
-
         board_info = {
             "usb_vid": "",
             "usb_pid": "",
@@ -139,43 +134,35 @@ def process_boards(repo_root: pathlib.Path, circuitpy_repo_root: pathlib.Path, g
             "circuitpy_creator_id": "",
             "circuitpy_creation_id": "",
         }
-
         with config.open() as conf:
             for line in conf:
                 for key in board_info:
                     if line.startswith(key.upper()):
                         board_info[key] = line.split("=")[1].split("#")[0].strip('" \n')
-
         # Fallback logic
         if not board_info["usb_vid"] and board_info["circuitpy_creator_id"]:
             board_info["usb_vid"] = board_info["circuitpy_creator_id"]
         if not board_info["usb_pid"] and board_info["circuitpy_creation_id"]:
             board_info["usb_pid"] = board_info["circuitpy_creation_id"]
-
         prefix = site_path.split("_", 1)[0]
         matched_manufacturer = next(
             (data["manufacturer"] for data in sorted_manufacturers if prefix.lower() in data["manufacturer"].lower()),
             None
         )
-
         if matched_manufacturer == "Unknown" or (matched_manufacturer and prefix.lower() not in board_info["usb_manufacturer"].lower()):
             board_info["usb_product"] = site_path
             board_info["usb_manufacturer"] = prefix.capitalize()
-
         if not board_info["usb_product"] or not board_info["usb_manufacturer"]:
             board_info["usb_product"] = site_path
             board_info["usb_manufacturer"] = prefix.capitalize()
-
         board_info["usb_vid"] = normalize_vid_pid(board_info["usb_vid"])
         board_info["usb_pid"] = normalize_vid_pid(board_info["usb_pid"])
-
         board_id = f"{board_info['usb_vid']}:{board_info['usb_pid']}"
         if board_id in processed_boards:
             processed_boards[board_id] += 1
             print(f"Note: Found another board with the same VID:PID: {board_id}:{site_path}")
         else:
             processed_boards[board_id] = 0
-
         board = {
             "vid": board_info["usb_vid"],
             "pid": board_info["usb_pid"],
@@ -185,19 +172,14 @@ def process_boards(repo_root: pathlib.Path, circuitpy_repo_root: pathlib.Path, g
             "description": f"{board_info['usb_manufacturer']} {board_info['usb_product']}",
         }
         boards.append(board)
-
         board_pyi_path = repo_root / "boards" / board_info["usb_vid"] / board_info["usb_pid"]
         board_pyi_path.mkdir(parents=True, exist_ok=True)
         
-        # Append a number to the filename if it's a duplicate
-        if processed_boards[board_id] > 0:
-            board_pyi_file = board_pyi_path / f"{site_path}_board_{processed_boards[board_id]}.pyi"
-        else:
-            board_pyi_file = board_pyi_path / f"{site_path}_board.pyi"
-
+        # Always use 'board.pyi' as the file name
+        board_pyi_file = board_pyi_path / "board.pyi"
+        
         board_stubs = {}
         imports_string, stubs_string = parse_pins(generic_stubs, pins, board_stubs)
-
         with board_pyi_file.open("w") as outfile:
             outfile.write("from __future__ import annotations\n")
             outfile.write(imports_string)
@@ -206,7 +188,6 @@ def process_boards(repo_root: pathlib.Path, circuitpy_repo_root: pathlib.Path, g
             outfile.write(stubs_string)
             for p in board_stubs:
                 outfile.write(f"{board_stubs[p]}\n")
-
     return boards
 
 def main():
@@ -215,9 +196,7 @@ def main():
     board_stub = repo_root / "stubs" / "board" / "__init__.pyi"
     generic_stubs = parse_generic_stub(board_stub)
     circuitpy_repo_root = repo_root / "circuitpython"
-    
     boards = process_boards(repo_root, circuitpy_repo_root, generic_stubs)
-    
     json_file = repo_root / "boards" / "metadata.json"
     with json_file.open("w") as metadata_file:
         json.dump(boards, metadata_file, indent=4)
