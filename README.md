@@ -11,7 +11,7 @@ I have forked the original extension in order to apply fixes
 
 Note: If updating and opening an existing CIRCUITPY folder, please re-select the board from the list. Please let me know if a board needs to be included. The metadata.json file contains 550 boards, 8 of which have yet to be released or have unknown manufacturers.
 
-
+New: If you are using Cursor AI, use CircuitPython V2 Cursor AI version of the extension 
 
 ## Getting Started
 
