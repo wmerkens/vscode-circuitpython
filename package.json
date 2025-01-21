@@ -2,7 +2,7 @@
   "name": "vscode-circuitpython-v2-cursor-ai",
   "displayName": "CircuitPython v2 Cursor AI",
   "description": "CircuitPython for Cursor AI",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "publisher": "wmerkens",
   "license": "MIT",
   "qna": "https://github.com/wmerkens/vscode-circuitpython/discussions",

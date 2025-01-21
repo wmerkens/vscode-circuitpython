@@ -3,6 +3,9 @@
 All notable changes to the "vscode-circuitpython" extension will be documented
 in this file. Please still refer to Joe Devivo version for possible changes.
 
+## [0.3.2]
+- Update to Circuit Python 9.2.3
+
 ## [0.3.1]
 - fix issue with intellesense and the boards not showing the pins
 
