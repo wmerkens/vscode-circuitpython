@@ -2,7 +2,7 @@
   "name": "vscode-circuitpython-v2",
   "displayName": "CircuitPython v2",
   "description": "CircuitPython for Visual Studio Code",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "publisher": "wmerkens",
   "license": "MIT",
   "qna": "https://github.com/wmerkens/vscode-circuitpython/discussions",
@@ -14,7 +14,7 @@
     "url": "https://github.com/wmerkens/vscode-circuitpython/issues"
   },
   "engines": {
-    "vscode": "^1.96.4"
+    "vscode": "^1.97"
   },
   "icon": "images/BlinkaOnDark.png",
   "categories": [

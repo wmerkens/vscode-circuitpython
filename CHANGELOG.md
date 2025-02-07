@@ -3,6 +3,8 @@
 All notable changes to the "vscode-circuitpython" extension will be documented
 in this file. Please still refer to Joe Devivo version for possible changes.
 
+## [0.3.3]
+- Update for circuit Python 9.2.4
 ## [0.3.2]
 - Update for Circuit Python 9.2.3
 
