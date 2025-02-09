@@ -14,7 +14,7 @@
     "url": "https://github.com/wmerkens/vscode-circuitpython/issues"
   },
   "engines": {
-    "vscode": "^1.97"
+    "vscode": "^1.97.0"
   },
   "icon": "images/BlinkaOnDark.png",
   "categories": [
@@ -149,13 +149,13 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.9.1",
     "@types/serialport": "^8.0.5",
-    "@types/vscode": "^1.96.0",
+    "@types/vscode": "^1.97.0",
     "@typescript-eslint/eslint-plugin": "^8.15.0",
     "@typescript-eslint/parser": "^8.15.0S",
     "@vscode/test-electron": "^2.4.1",
-    "@vscode/vsce": "^3.2.1",
+    "@vscode/vsce": "^3.2.2",
     "ansi-regex": "^6.1.0",
-    "electron": "^33.2.6",
+    "electron": "^33.2.7",
     "electron-builder": "^25.1.8",
     "eslint": "^9.15.0",
     "glob": "^7.2.3",
