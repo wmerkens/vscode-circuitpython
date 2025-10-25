@@ -45,12 +45,14 @@ export class SerialMonitor implements vscode.Disposable {
   private _openPortStatusBar: vscode.StatusBarItem;
   private _terminal: vscode.Terminal;
   private _writeEmitter: vscode.EventEmitter<string>;
+  private _pty: vscode.Pseudoterminal;
 
   public constructor() {
     try {
 //      SerialPort.Binding = require('@serialport/bindings');
       this._writeEmitter = new vscode.EventEmitter<string>();
-      let pty:vscode.Pseudoterminal = {
+      // let pty:vscode.Pseudoterminal = {
+	  this._pty = {
         onDidWrite: this._writeEmitter.event,
         open: () => this._writeEmitter.fire('Circuit Python Serial Monitor\r\n'),
         close: () => {},
@@ -58,7 +60,8 @@ export class SerialMonitor implements vscode.Disposable {
           this._serialPort.write(data);
         }
       };
-      this._terminal = vscode.window.createTerminal({name: SerialMonitor.SERIAL_MONITOR, pty: pty });
+      // this._terminal = vscode.window.createTerminal({name: SerialMonitor.SERIAL_MONITOR, pty: pty });
+	  this._terminal = vscode.window.createTerminal({name: SerialMonitor.SERIAL_MONITOR, pty: this._pty });
       this._portsStatusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 20);
       this._portsStatusBar.command = "circuitpython.selectSerialPort";
       this._portsStatusBar.tooltip = "Select Serial Port";
@@ -149,6 +152,22 @@ export class SerialMonitor implements vscode.Disposable {
     } else {
       return false;
     }
+  }
+
+  public async clearSerialMonitor() {
+    // from https://github.com/microsoft/vscode/issues/81908
+    // \x1bc => Reset terminal
+    // \x1b[0J => Clear screen from cursor down
+    // \x1b[1J => Clear screen from cursor up
+    // \x1b[2J => Clear entire screen
+    // \x1b[3J   => Clears scroll back buffer (not documented)
+    // \x1b[0;0H => Move cursor to 0,0
+
+      if (this._writeEmitter) {
+        this._writeEmitter.fire('\x1bc\x1b[0J\x1b[1J\x1b[2J\x1b[3J\x1b[0;0H');
+      }
+
+
   }
 
   private updatePortListStatus(port: SerialPickItem) {

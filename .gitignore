@@ -20,3 +20,4 @@ build
 .yarn
 yarn-error.log
 package
+built.*

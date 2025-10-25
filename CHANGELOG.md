@@ -3,6 +3,9 @@
 All notable changes to the "vscode-circuitpython" extension will be documented
 in this file. Please still refer to Joe Devivo version for possible changes.
 
+##[0.3.4]
+- Update for circuit Python 9.2.9
+- Updates suggested by James Fowler on Discord to make the Extension compile better in Windows
 ## [0.3.3]
 - Update for circuit Python 9.2.4
 ## [0.3.2]
